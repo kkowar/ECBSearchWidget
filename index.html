@@ -1,0 +1,166 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>SODA Date Range Query</title>
+
+  <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css" />
+  <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/iThing.css" type="text/css" />
+  <link href="css/jquery.dynatable.css" rel="stylesheet">
+
+
+
+  <style>
+	#slider {
+		margin:20px 80px;
+	}
+
+	html {
+		font-family: sans-serif;
+		text-align: center;
+	}
+
+  .container-fluid {
+    margin-top: 65px;
+  }
+
+
+  .tableContainer {
+    margin-top: 30px;
+    display:none;
+  }
+
+  #downloadButton {
+    display:none;
+  }
+
+  </style>
+</head>
+
+<body>
+  <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Fort Worth Certificate of Occupancy Query</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+          
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+    <div class="container-fluid">
+    <h3>Choose a date range using the slider, then click submit</h3>
+	<div id = "slider"></div><br/>
+	<button type = 'button' id = "submitButton" class = 'btn btn-primary'>Submit</button>
+  <button type = 'button' id = "downloadButton" class = 'btn btn-primary'>Download CSV</button>
+  <div class = 'tableContainer'>
+	<table id = "my-final-table" class="table table-bordered">
+    <thead>
+    <th>b1_alt_id</th>
+    <th>recordAlias</th>
+    <th>appltype</th>
+    <th>applsubtype</th>
+    <th>currstatus</th>
+    <th>projectname</th>
+    <th>codate</th>
+    <th>applname</th>
+    <th>appladdr1</th>
+    <th>applcity</th>
+    <th>applzip</th>
+  </thead>
+  <tbody>
+  </tbody> 
+  </table>
+  </div>
+  </div>
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+	<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+	<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/jquery-ui.min.js"></script>
+	<script src="//cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js"></script>
+	<script src="js/jQDateRangeSlider-min.js"></script>
+	<script src="js/jquery.dynatable.js"></script>
+  <script>
+//hard-coded date range from our dataset
+var dateMax = new Date();
+
+var dateMin = new Date(2000, 4, 20);
+
+var baseURL = 'https://data.fortworthtexas.gov/resource/i85s-46fv';
+
+$("#slider").dateRangeSlider({
+    bounds: {
+        min: dateMin,
+        max: dateMax
+    },
+    defaultValues: {
+        min: new Date(2014, 0, 1),
+        max: dateMax
+    }
+});
+
+$('#submitButton').on('click', function() {
+    var inputMax = $("#slider").dateRangeSlider("max");
+    var inputMin = $("#slider").dateRangeSlider("min");
+    console.log(inputMax.toString());
+    console.log(inputMin.toString());
+
+    //sample API call: https://data.fortworthtexas.gov/resource/i85s-46fv.json?$where=codate>'2014-07-01' AND codate<'2014-07-31'
+    inputMax = moment(inputMax).add(1, 'days').format("YYYY-MM-DD");
+    inputMin = moment(inputMin).subtract(1, 'days').format("YYYY-MM-DD");
+
+
+    console.log(inputMax);
+    console.log(inputMin);
+
+
+
+    var apiCall = baseURL + '.json?$where=codate>\'' + inputMin +
+        '\' AND codate<\'' + inputMax + '\'';
+
+    console.log(apiCall);
+
+    $.getJSON(apiCall, function(data) {
+        console.log(data);
+
+        $('#my-final-table').dynatable({
+            dataset: {
+                records: data
+
+            }
+        });
+        $('#downloadButton').fadeIn();
+        $('.tableContainer').slideDown(1200);
+
+    });
+
+
+    $('#downloadButton').on('click', function(e) {
+        var csvURL = baseURL + '.csv?$where=codate>\'' +
+            inputMin + '\' AND codate<\'' + inputMax + '\'';
+
+        e.preventDefault(); //stop the browser from following
+        window.location.href = csvURL;
+
+
+    });
+
+});
+
+   
+
+
+
+  </script>
+</body>
+</html>
