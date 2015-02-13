@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
 
-  <title>SODA Date Range Query</title>
+  <title>ECB Search Tool Built on SODA</title>
 
   <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/smoothness/jquery-ui.css" />
   <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet">
@@ -37,6 +37,35 @@
     display:none;
   }
 
+  .result {
+    text-align: left;
+    border-radius: 6px;
+    border: 1px solid #B9B9B9;
+    padding: 15px;
+    margin-bottom:10px;
+  }
+
+  #resultsContainer {
+    margin-top:25px;
+  }
+
+  .violation, .hearing {
+    width:33%;
+    border-radius: 6px;
+    border: 1px solid #B9B9B9;
+    padding: 9px;
+    display:inline-block;
+    vertical-align:top;
+  }
+
+  .violationTitle {
+    font-weight: 600;
+  }
+
+  #resultsMessage {
+    display:none;
+  }
+
   </style>
 </head>
 
@@ -50,7 +79,7 @@
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="#">Fort Worth Certificate of Occupancy Query</a>
+          <a class="navbar-brand" href="#">ECB Violations Search Widget</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
@@ -60,29 +89,27 @@
       </div>
     </nav>
     <div class="container-fluid">
-    <h3>Choose a date range using the slider, then click submit</h3>
-    <p>This widget takes the date range selected on the slider, and builds a date range SoQL query on Fort Worth's Certificate of Occupancy Dataset.  The results are displayed in a table, and a CSV download button is provided.</p>
-	<div id = "slider"></div><br/>
-	<button type = 'button' id = "submitButton" class = 'btn btn-primary'>Submit</button>
+    <div class="col-lg-12">
+    <h3>Enter an address or violation number, then click Search</h3>
+    <p>This widget does a text search of the ECB Violations Dataset on data.cityofnewyork.us and returns matches in a table.</p>
+  <div class="col-lg-6 col-md-offset-3">
+	<form id="myForm">
+
+  <div class="input-group">
+
+      <input type="text" id="searchBox" class="form-control" placeholder="Search for...">
+      <span class="input-group-btn">
+        <button id = 'submitButton' class="btn btn-default" type="submit">Go!</button>
+      </span>
+    </div><!-- /input-group -->
+
+    </form>
+    </div>
   <button type = 'button' id = "downloadButton" class = 'btn btn-primary'>Download CSV</button>
-  <div class = 'tableContainer'>
-	<table id = "my-final-table" class="table table-bordered">
-    <thead>
-    <th>b1_alt_id</th>
-    <th>recordAlias</th>
-    <th>appltype</th>
-    <th>applsubtype</th>
-    <th>currstatus</th>
-    <th>projectname</th>
-    <th>codate</th>
-    <th>applname</th>
-    <th>appladdr1</th>
-    <th>applcity</th>
-    <th>applzip</th>
-  </thead>
-  <tbody>
-  </tbody> 
-  </table>
+  <div id = 'resultsMessage'>Found <span id="resultCount"></span> results matching '<span id="searchString"></span>'</div>
+  <div id = 'resultsContainer'>
+
+  </div>
   </div>
   </div>
 	<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
@@ -92,63 +119,48 @@
 	<script src="js/jQDateRangeSlider-min.js"></script>
 	<script src="js/jquery.dynatable.js"></script>
   <script>
-//hard-coded date range from our dataset
-var dateMax = new Date();
 
-var dateMin = new Date(2000, 4, 20);
 
-var baseURL = 'https://data.fortworthtexas.gov/resource/i85s-46fv';
+var baseURL = 'https://data.cityofnewyork.us/resource/y6h5-jvss.json';
 
-$("#slider").dateRangeSlider({
-    bounds: {
-        min: dateMin,
-        max: dateMax
-    },
-    defaultValues: {
-        min: new Date(2014, 0, 1),
-        max: dateMax
-    }
+//prevent clearing of input on submit
+$("#myForm").submit(function(e){
+    e.preventDefault();
 });
 
 $('#submitButton').on('click', function() {
-    var inputMax = $("#slider").dateRangeSlider("max");
-    var inputMin = $("#slider").dateRangeSlider("min");
-    console.log(inputMax.toString());
-    console.log(inputMin.toString());
 
-    //sample API call: https://data.fortworthtexas.gov/resource/i85s-46fv.json?$where=codate>'2014-07-01' AND codate<'2014-07-31'
-    inputMax = moment(inputMax).add(1, 'days').format("YYYY-MM-DD");
-    inputMin = moment(inputMin).subtract(1, 'days').format("YYYY-MM-DD");
+    var searchString = $('#searchBox').val();
 
+    var apiCall = baseURL + '?$q=' + searchString;
 
-    console.log(inputMax);
-    console.log(inputMin);
-
-
-
-    var apiCall = baseURL + '.json?$where=codate>\'' + inputMin +
-        '\' AND codate<\'' + inputMax + '\'';
 
     console.log(apiCall);
 
     $.getJSON(apiCall, function(data) {
-        console.log(data);
+        $('#resultCount').text(data.length);
+        $('#searchString').text(searchString);
 
-        $('#my-final-table').dynatable({
-            dataset: {
-                records: data
-
-            }
+        data.forEach(function(result) {
+          $("#resultsContainer").append(generateResult(result));
         });
+
+        // $('#my-final-table').dynatable({
+        //     dataset: {
+        //         records: data
+
+        //     }
+        // });
         $('#downloadButton').fadeIn();
+        $('#resultsMessage').fadeIn();
         $('.tableContainer').slideDown(1200);
 
     });
 
 
     $('#downloadButton').on('click', function(e) {
-        var csvURL = baseURL + '.csv?$where=codate>\'' +
-            inputMin + '\' AND codate<\'' + inputMax + '\'';
+        var csvURL = 'https://data.cityofnewyork.us/resource/y6h5-jvss.csv?$q=' 
+          + searchString;
 
         e.preventDefault(); //stop the browser from following
         window.location.href = csvURL;
@@ -158,6 +170,36 @@ $('#submitButton').on('click', function() {
 
 });
 
+function generateResult(result) {
+  var s = "",
+    r = result;
+
+  s += "<div class='result'>";
+  s += "<span class='violationTitle'>#" + r.ticket_number + " - " + r.violation_date + "</span>";
+  s += "<br/>";
+
+  s += "<div class='violation'>";
+  s += "Violation Details<br/>";
+  s += r.violation_location_house + ' ' + r.violation_location_street_name
+  s += "<br/>";
+  s += (r.violation_details) ? r.violation_details : "No details provided";
+  s += "<br/>";
+  s += "Violation amount: $" + r.total_violation_amount;
+  s += "</div>";
+
+  s += "<div class='hearing'>";
+  s += "Hearing Details<br/>";
+  s += "Date: " + r.hearing_date
+  s += "<br/>";
+  s += "Status: " + r.hearing_status
+  s += "<br/>";
+  s += "Result: " + r.hearing_result
+  s += "<br/>";
+  s += "</div>";
+
+  s += "</div>";
+  return s;
+};
    
 
 
